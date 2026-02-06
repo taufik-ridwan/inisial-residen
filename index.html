@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nama Residen -> INISIAL (v0.1.1 ALPHA)</title>
+    <style>
+        /* CSS: Minimalist and Plain */
+        body {
+            font-family: Arial, Helvetica, sans-serif; /* Standard readable font */
+            background-color: #fff;
+            padding: 30px;
+            margin: 0;
+            color: #333;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        h2 { margin-top: 0; font-size: 1.5rem; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        
+        .toolbar {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            background: #fff;
+            border-radius: 3px;
+        }
+
+        button:hover { background-color: #eee; }
+        
+        button.btn-primary {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        button.btn-primary:hover { background-color: #0056b3; }
+
+        /* The Editor Box */
+        #editor {
+            min-height: 500px;
+            border: 1px solid #ccc; /* Simple gray border */
+            padding: 20px;
+            overflow: auto;
+            background-color: #fff;
+            outline: none;
+        }
+
+        #editor:focus {
+            border-color: #66afe9;
+            box-shadow: 0 0 8px rgba(102, 175, 233, 0.6);
+        }
+
+        #editor:empty:before {
+            content: "Click here and Paste (Ctrl+V)... (Formatting will be stripped)";
+            color: #bbb;
+        }
+
+        /* PLAIN TABLE STYLES */
+        table { 
+            border-collapse: collapse; 
+            width: 100%; 
+            font-size: 14px;
+        }
+        
+        td, th {
+            border: 1px solid #ccc; /* Standard grid lines */
+            padding: 5px 10px;
+            vertical-align: top;
+            background-color: transparent !important; /* Force remove background colors */
+            color: #000 !important; /* Force black text */
+            font-weight: normal !important; /* Force remove bold */
+            font-style: normal !important; /* Force remove italics */
+        }
+        
+        /* Highlight converted cells slightly so you know they changed, 
+           but keep it subtle (plain text style) */
+        .match-found {
+            background-color: #f0f0f0 !important; 
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Nama Residen -> INISIAL (v0.1.1 ALPHA)</h2>
+    
+    <div class="toolbar">
+        <button class="btn-primary" onclick="copyToClipboard()">Copy Table</button>
+        <button onclick="clearEditor()">Clear</button>
+    </div>
+
+    <div id="editor" contenteditable="true"></div>
+</div>
+
+<script>
+    // 1. DATABASE
+    const residentsRaw = [
+        { id: "TF", name: "TAUFIK RIDWAN HADI KUSUMA" },
+        { id: "AK", name: "AUDRIC KENNY TEDJA" },
+        { id: "IZ", name: "MUHAMMAD IZ ZUDDIN ADHA" },
+        { id: "MR", name: "MERINA RACHMADINA" },
+        { id: "VA", name: "ALVA PUTRI DESWANDARI" },
+        { id: "RN", name: "SITI CHAIRANI NUR" },
+        { id: "DL", name: "DEWI MARMINTA LASE" },
+        { id: "UT", name: "UTAMI SETIASIH" },
+        { id: "RI", name: "RIDHAM ISMU PRAHANTYO" },
+        { id: "VL", name: "VINY AGUSTIANI LESTARI" },
+        { id: "IP", name: "ISNI ARDHIA PRASTYANA" },
+        { id: "LU", name: "LURI AULIANTI" },
+        { id: "CH", name: "CAMELIA SEPTINA HUTAHAYAN" },
+        { id: "AJ", name: "ANNANDA JUADIHAR PASHA" },
+        { id: "RA", name: "RIO ANGGARA" },
+        { id: "DI", name: "DIANA ADELAIDA KANDAMI" },
+        { id: "AN", name: "ANDRIANI" },
+        { id: "LM", name: "LELA MANTILI" },
+        { id: "AA", name: "ASTRI ANINDITA UTOMO" },
+        { id: "AD", name: "ADE SAPUTRI" },
+        { id: "DN", name: "DIANITA DWI PUJI RAHAYU" },
+        { id: "IM", name: "INAMYART MAHARANI" },
+        { id: "RG", name: "RHEZA GANDI BAWONO" },
+        { id: "CY", name: "CYNTHIA HIKMAH SAVITRI" },
+        { id: "FA", name: "FITHRIA ANGGRAYNI" },
+        { id: "GH", name: "GINIANI HILSA" },
+        { id: "PS", name: "PUSPITA SARI" },
+        { id: "RF", name: "RIZKY FERRIAN FERDIANSYAH" },
+        { id: "OM", name: "DWI WIRASTOMO" },
+        { id: "IU", name: "INDIRA UTAMI YUSUF" },
+        { id: "RE", name: "RESTI LHUTVIA ANDANI" },
+        { id: "SR", name: "SITANAJA RAYMOND" },
+        { id: "SW", name: "SWESTI SARI SUCIATI" },
+        { id: "RS", name: "NI LUH PUTU RUSTIARI" },
+        { id: "BR", name: "BENING RAHIMI TITISARI" },
+        { id: "ES", name: "ESTU SEPTIYANTO" },
+        { id: "IW", name: "INDRA WAHONO SUHARIYANTO" },
+        { id: "LY", name: "LELY AMEDIA RATRI" }
+    ];
+
+    // Pre-process residents
+    const residents = residentsRaw.map(r => ({
+        id: r.id,
+        cleanName: normalizeText(r.name),
+        nameParts: normalizeText(r.name).split(' ')
+    }));
+
+    const editor = document.getElementById('editor');
+
+    // 2. PASTE EVENT - CLEAN FORMATTING
+    editor.addEventListener('paste', (e) => {
+        e.preventDefault(); // Stop standard paste
+        
+        // Get clipboard data as HTML (to keep rows/cols) or Text
+        const clipboardData = (e.clipboardData || window.clipboardData);
+        const htmlData = clipboardData.getData('text/html');
+        const textData = clipboardData.getData('text/plain');
+
+        let finalHTML = "";
+
+        if (htmlData) {
+            // Parse the HTML
+            const doc = new DOMParser().parseFromString(htmlData, 'text/html');
+            const tables = doc.querySelectorAll('table');
+            
+            if (tables.length > 0) {
+                // If there's a table, rebuild it purely
+                // This strips ALL inline styles, classes, bolds, colors
+                let tableHTML = "<table><tbody>";
+                
+                const rows = tables[0].querySelectorAll('tr');
+                rows.forEach(row => {
+                    tableHTML += "<tr>";
+                    const cells = row.querySelectorAll('td, th');
+                    cells.forEach(cell => {
+                        // We only take innerText, discarding any inner HTML tags (bold, etc)
+                        tableHTML += `<td>${cell.innerText.trim()}</td>`;
+                    });
+                    tableHTML += "</tr>";
+                });
+                tableHTML += "</tbody></table>";
+                finalHTML = tableHTML;
+            } else {
+                // HTML exists but no table (maybe copied from web text), treat as text
+                finalHTML = textData.replace(/\n/g, '<br>');
+            }
+        } else {
+            // Fallback for plain text
+            finalHTML = textData.replace(/\n/g, '<br>');
+        }
+
+        // Insert clean HTML
+        document.execCommand('insertHTML', false, finalHTML);
+
+        // Run Matcher
+        setTimeout(processTable, 50);
+    });
+
+    // 3. NORMALIZATION HELPER
+    function normalizeText(text) {
+        if (!text) return "";
+        return text
+            .replace(/\u00A0/g, ' ') 
+            .replace(/[\n\r]/g, ' ') 
+            .replace(/\s+/g, ' ')    
+            .trim()
+            .toUpperCase();
+    }
+
+    // 4. MAIN PROCESSING
+    function processTable() {
+        const cells = editor.querySelectorAll('td');
+
+        cells.forEach(cell => {
+            // Avoid re-processing
+            if (cell.dataset.processed) return;
+
+            const cellText = cell.innerText;
+            const match = findBestMatch(cellText);
+
+            if (match) {
+                cell.innerText = match.id;
+                cell.classList.add('match-found');
+            }
+            cell.dataset.processed = "true";
+        });
+    }
+
+    // 5. FUZZY MATCHING (Same logic as before)
+    function findBestMatch(input) {
+        const cleanInput = normalizeText(input);
+        if (cleanInput.length < 2) return null;
+
+        const inputParts = cleanInput.split(' ');
+        let bestCandidate = null;
+        let maxScore = 0;
+
+        residents.forEach(res => {
+            let score = 0;
+
+            // 1. Exact Substring match
+            if (res.cleanName.includes(cleanInput)) {
+                score += 100 + cleanInput.length; 
+            }
+
+            // 2. Word match
+            let wordsMatchedCount = 0;
+            inputParts.forEach(part => {
+                if (part.length > 2 || inputParts.length === 1) {
+                    if (res.nameParts.includes(part)) {
+                        wordsMatchedCount++;
+                    }
+                }
+            });
+
+            if (wordsMatchedCount > 0) score += (wordsMatchedCount * 10);
+
+            if (score > maxScore) {
+                maxScore = score;
+                bestCandidate = res;
+            }
+        });
+
+        if (maxScore >= 10) return bestCandidate;
+        return null;
+    }
+
+    function copyToClipboard() {
+        const range = document.createRange();
+        range.selectNodeContents(editor);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        document.execCommand('copy');
+        
+        const btn = document.querySelector('.btn-primary');
+        const prevText = btn.innerText;
+        btn.innerText = "Copied!";
+        setTimeout(() => btn.innerText = prevText, 1500);
+    }
+
+    function clearEditor() {
+        if(confirm("Clear table?")) {
+            editor.innerHTML = "";
+        }
+    }
+</script>
+
+</body>
+</html>
